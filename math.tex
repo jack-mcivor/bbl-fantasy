@@ -1,0 +1,89 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+
+\title{BBL fantasy}
+\author{jacktmcivor }
+\date{January 2019}
+
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\setlength{\parindent}{0ex}
+\usepackage{geometry}\geometry{a4paper,total={170mm,257mm},left=20mm,top=20mm,}
+\DeclareMathOperator{\E}{\mathbb{E}}
+
+\begin{document}
+
+\section{Problem formulation}
+The Fantasy problem (a type of knapsack problem)\\
+
+The expected value of player $i$ in round $r$ is determined by:
+\begin{align*}
+    v_{ir} = \E[\text{points}]_i \cdot \E[\text{availability}]_{ir} \cdot \text{n games}_{ir}
+\end{align*}
+
+
+The problem is to maximise the expected points of the team across all rounds:
+\begin{align*}
+    \text{max} \sum_{i,p,r} v_{ir} \cdot x^t_{ipr} + \sum_{i,r} v_{ir} \cdot x^c_{ir}
+\end{align*}
+
+by choosing variables:
+\begin{align*}
+    x^s_{ipr} &\in \{0, 1\} &\text{player $i$ is selected in squad for round $r$, playing as $p$}\\
+    x^t_{ipr} &\in \{0, 1\} &\text{player is selected in team}\\
+    x^c_{ir} &\in \{0, 1\} &\text{player is selected as captain}\\
+    t_{ir} &\in \{0, 1\} &\text{player is traded (in or out) at the end of round $r$}
+\end{align*}
+
+with constants:
+\begin{align*}
+    &\text{budget} &\text{starts in round 1 at \$2million}\\
+    &\text{positions}_{ip} \in \{0, 1\} &\text{player $i$ is available in position $p$}\\
+    &\text{c} &\text{number of trades allowed each round}\\
+\end{align*}
+
+subject to:
+\begin{align*}
+    &\forall_{r} & \sum_{i,p} c_i \cdot x^s_{ipr} &\le \text{budget} &\text{squad must stay in budget}\\
+    &\forall_{r} & \sum_{i} x^s_{i,bwl,r} == 7, \sum_{i} x^s_{i,bat,r} &== 7, \sum_{i} x^s_{i,wkp,r} == 2 &\text{fill all squad positions}\\
+    &\forall_{r} & \sum_{i} x^t_{i,bwl,r} == 5, \sum_{i} x^t_{i,bat,r} &== 5, \sum_{i} x^t_{i,wkp,r} == 1 &\text{fill all team positions} \\
+    &\forall_{r} & \sum_{i} x^c_{ir} &== 1 &\text{pick one captain}\\
+    \\
+    &\forall_{i,r} & \sum_{p} x^s_{ipr} &\le 1 &\text{players can only be picked in one position}\\
+    &\forall_{i,r} & \sum_{p} x^t_{ipr} &\ge x^c_{ir} &\text{captain must also be in team}\\
+    \\
+    &\forall_{i,p,r} & x^s_{ipr} &\le \text{positions}_{ip} &\text{players must be available for position}\\
+    &\forall_{i,p,r} & x^s_{ipr} &\ge x^t_{ipr} &\text{players in team must also be in squad}\\
+    \\
+    &\forall_{r} & \sum_{p} x^s_{i,p,r} + t_{ir} &\ge \sum_{p} x^s_{i,p,r+1} &\text{disallow free trade-in}\\
+    &\forall_{r} & \sum_{p} x^s_{i,p,r+1} + t_{ir} &\ge \sum_{p} x^s_{i,p,r} &\text{disallow free trade-out}\\
+    &\forall_{r} & \sum_{p} \left( x^s_{i,p,r} + x^s_{i,p,r+1} \right) &\ge t_{ir} &\text{optional: wasted trade (not picked)}\\
+    &\forall_{r} & x^s_{i,p,r} + x^s_{i,p,r+1} + t_{ir} &\le 2  &\text{optional: wasted trade (picked) (check)}\\
+    \\
+    &\forall_{r} & \sum_{i} t_{ir} &\le 2\text{c} &\text{limit number of trades}\\
+\end{align*}
+
+Note that if each player's value per dollar was the same and there was no schedule or bench, then the best solution is simply to pick a team so that it's value is as close as possible to the budget.\\
+
+
+\section{Expected points}
+It's very important to the model that player values are estimated well. What we should do is:
+
+\begin{itemize}
+    \item For each player performance in the past, calculate the fantasy points they would have scored in this match, and the league the game was played in.
+    \item Scrutinize the distribution of points for each league.
+\end{itemize}
+
+\section{Ideas}
+\begin{itemize}
+    \item How does objective value as number of allowed trades \& budget changes?
+    \item You buy players because (1) they earn points and (2) they appreciate in value. Have some expected appreciation so that cheap players will be picked on the bench and maybe sold later?
+    \item Train a model to predict BBL fantasy points using JLT, T20i, IPL, CPL and historical BBL performance
+    \item Should fielding stats be used in expected points? Only if some players are more likely than others to make catches/ run-outs
+    \item Should we use a continuous version of the (stepwise) bonuses for economy and strike-rate?
+    \item How to allow expected points to be a distribution? By simulating expected points and solving?
+    \item Compare my solution to the BBL 19 fantasy distribution of the public
+    \item Find optimal team knowing what points players have got in each round (new decision variable for budget in each round for r in rounds: pl.lpSum(costs[i, p]*xs[i,p,r] for i in players for p in positions) == budget(r)) 
+\end{itemize}
+\end{document}
